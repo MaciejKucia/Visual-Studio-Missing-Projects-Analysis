@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <StopOnFirstFailure>false</StopOnFirstFailure>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Solutions Include="$(MSBuildProjectDirectory)\**\*.sln"/>
+  </ItemGroup>
+
+  <UsingTask TaskName="CheckSolutionForMissingProjects" TaskFactory="CodeTaskFactory" 
+   AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v12.0.dll" >
+    <ParameterGroup>
+      <SolutionPaths ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Reference Include="$(MSBuildToolsPath)\Microsoft.Build.dll" />
+      <Code Type="Class" Language="cs"><![CDATA[
+using System;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using Microsoft.Build.Framework;
+using Microsoft.Build.Utilities;
+using Microsoft.Build.Construction;
+using System.Text.RegularExpressions;
+
+public class CheckSolutionForMissingProjects : Task
+{
+  [Required]
+  public ITaskItem[] SolutionPaths { get; set; }
+  
+  Regex re = new Regex(@"<ProjectReference.*?<Project>(?'guid'.*?)</Project>.*?<Name>(?'name'.*?)</Name>.*?</ProjectReference>",
+                       RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.Compiled);
+
+  IEnumerable<String> GetAllNeededProjects(String solutionPath)
+  {
+    foreach(var project in SolutionFile.Parse(solutionPath).ProjectsInOrder)
+      foreach (Match m in re.Matches(File.ReadAllText(project.AbsolutePath)))
+        yield return m.Groups["guid"].Value.ToUpper();
+  }
+  
+  IEnumerable<String> GetAllProjects(String solutionPath)
+  {
+     return SolutionFile.Parse(solutionPath).ProjectsByGuid.Keys.Cast<String>();
+  }
+
+  String GetNameOfMissing(String solutionPath, String guid)
+  {
+    Regex re = new Regex(@"<ProjectReference.*?<Project>"+guid+"</Project>.*?<Name>(?'name'.*?)</Name>.*?</ProjectReference>",
+                         RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Singleline);
+
+    foreach(var project in SolutionFile.Parse(solutionPath).ProjectsInOrder)
+      foreach (Match m in re.Matches(File.ReadAllText(project.AbsolutePath)))
+        return m.Groups["name"].Value;
+    return "Could not resolve name";
+  }
+  
+  public override bool Execute()
+  {
+    var ret = true;
+    foreach (var SolutionPath in SolutionPaths.Select(i => i.ItemSpec))
+    {
+    Log.LogMessage(MessageImportance.High, "Looking for missing projects in solution {0}", SolutionPath);
+      var needed  = GetAllNeededProjects(SolutionPath);
+      var present = GetAllProjects(SolutionPath);
+      var diff = needed.Except(present).ToArray();
+      foreach(var missing in diff)
+      Log.LogError("Solution [{2}] is missing referenced project [{0}]=[{1}]", 
+                   missing, GetNameOfMissing(SolutionPath, missing), SolutionPath); 
+      if (diff.Length > 0) ret = false;
+      else Log.LogMessage(MessageImportance.High, "OK!");
+    }
+    return ret;
+  }
+}]]></Code>
+    </Task>
+  </UsingTask>
+  
+  <Target Name="Check">
+    <Message Text="Using MSBuildToolsPath [$(MSBuildToolsPath)]"/>
+    <Message Text="Checking solution files:%0d%0a> @(Solutions, '%0d%0a> ')"/>
+    <CheckSolutionForMissingProjects SolutionPaths="@(Solutions)" ContinueOnError="ErrorAndContinue"/>
+  </Target>
+
+</Project>
