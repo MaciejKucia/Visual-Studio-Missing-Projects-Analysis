@@ -6,10 +6,13 @@ Solutions with missing projects will not build. It is easy to add a new referenc
 This repo consists:
  - msbuild target file
  - batch to run the target
+ - batch to build validator as executable file
  - 3 sample solutions
  - 3 sample projects
 
 Only one solution contains all required projects.
+
+MSBuild 14.0 is required to run the target. Executable version of the validator can be used with systems that do not have MSBuild 14.0 installed as long as the relevant dll's copied over.
 
 ## Sample output
 ```

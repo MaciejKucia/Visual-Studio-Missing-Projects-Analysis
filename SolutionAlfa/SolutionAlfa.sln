@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectB", "..\ProjectB\Pro
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectC", "ProjectC\ProjectC.csproj", "{D947B053-EB35-460F-9517-68AE452C8D33}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DUMMY FOLDER", "DUMMY FOLDER", "{826C0DAB-E92B-410B-B5A7-3504AC4CFD10}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
